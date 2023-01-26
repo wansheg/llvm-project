@@ -2168,6 +2168,51 @@ def int_ptrauth_blend :
 def int_ptrauth_sign_generic :
   DefaultAttrsIntrinsic<[llvm_i64_ty], [llvm_i64_ty, llvm_i64_ty], [IntrNoMem]>;
 
+def int_afpga_task_define : ClangBuiltin<"__builtin_afpga_task_define">,
+    Intrinsic<[], [llvm_ptr_ty, llvm_ptr_ty, llvm_ptr_ty, llvm_ptr_ty], [IntrInaccessibleMemOnly]>;
+
+def int_afpga_task_pipe_read : ClangBuiltin<"__builtin_afpga_task_pipe_read">,
+    Intrinsic<[llvm_ptr_ty], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>;
+
+def int_afpga_task_pipe_write : ClangBuiltin<"__builtin_afpga_task_pipe_write">,
+    Intrinsic<[], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>;
+
+def int_afpga_mutex_lock: ClangBuiltin<"__builtin_afpga_mutex_lock">, 
+    Intrinsic<[], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>; 
+
+def int_afpga_mutex_unlock: ClangBuiltin<"__builtin_afpga_mutex_unlock">, 
+    Intrinsic<[], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>; 
+
+def int_afpga_async_task_define: ClangBuiltin<"__builtin_afpga_async_task_define">, 
+    Intrinsic<[], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>; 
+
+def int_afpga_async_interface_define: ClangBuiltin<"__builtin_afpga_interface_define">, 
+    Intrinsic<[], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>; 
+
+def int_afpga_hostif_mem_read: ClangBuiltin<"__builtin_afpga_hostif_mem_read">, 
+    Intrinsic<[llvm_any_ty], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>; 
+
+def int_afpga_hostif_mem_write: ClangBuiltin<"__builtin_afpga_hostif_mem_write">, 
+    Intrinsic<[], [llvm_ptr_ty, llvm_any_ty], [IntrInaccessibleMemOnly]>; 
+
+def int_afpga_hostif_scalar_read: ClangBuiltin<"__builtin_afpga_hostif_scalar_read">, 
+    Intrinsic<[llvm_any_ty], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>; 
+
+def int_afpga_hostif_scalar_write: ClangBuiltin<"__builtin_afpga_hostif_scalar_write">, 
+    Intrinsic<[], [llvm_ptr_ty, llvm_any_ty], [IntrInaccessibleMemOnly]>; 
+
+def int_afpga_hwif_scalar_read: ClangBuiltin<"__builtin_afpga_hwif_scalar_read">, 
+    Intrinsic<[llvm_any_ty], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>; 
+
+def int_afpga_hwif_scalar_write: ClangBuiltin<"__builtin_afpga_hwif_scalar_write">, 
+    Intrinsic<[], [llvm_ptr_ty, llvm_any_ty], [IntrInaccessibleMemOnly]>; 
+
+def int_afpga_fifo_read: ClangBuiltin<"__builtin_afpga_fifo_read">, 
+    Intrinsic<[llvm_any_ty], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>; 
+
+def int_afpga_fifo_write: ClangBuiltin<"__builtin_afpga_fifo_write">, 
+    Intrinsic<[], [llvm_ptr_ty, llvm_any_ty], [IntrInaccessibleMemOnly]>; 
+
 //===----------------------------------------------------------------------===//
 
 //===----------------------------------------------------------------------===//
