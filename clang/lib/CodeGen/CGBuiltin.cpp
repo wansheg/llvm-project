@@ -2678,6 +2678,34 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
                                      "cast");
     return RValue::get(Result);
   }
+  /*************** HLS special builtin ************************/
+#if 0
+  case Builtin::BI__builtin_bit_concat:
+    return EmitBuiltinBitConcat(E);
+  case Builtin::BI__builtin_bit_from_string:
+    return EmitBuiltinBitFromString(E);
+  case Builtin::BI__builtin_bit_select:
+    return EmitBuiltinBitSelect(E);
+  case Builtin::BI__builtin_bit_set:
+    return EmitBuiltinBitSet(E);
+  case Builtin::BI__builtin_bit_part_select:
+    return EmitBuiltinBitPartSelect(E);
+  case Builtin::BI__builtin_bit_part_set:
+    return EmitBuiltinBitPartSet(E);
+  case Builtin::BI__builtin_bit_and_reduce:
+    return EmitBuiltinBitAndReduce(E);
+  case Builtin::BI__builtin_bit_or_reduce:
+    return EmitBuiltinBitOrReduce(E);
+  case Builtin::BI__builtin_bit_nxor_reduce:
+    return EmitBuiltinBitNXorReduce(E);
+  case Builtin::BI__builtin_bit_nand_reduce:
+    return EmitBuiltinBitNAndReduce(E);
+  case Builtin::BI__builtin_bit_nor_reduce:
+    return EmitBuiltinBitNOrReduce(E);
+  case Builtin::BI__builtin_bit_xor_reduce:
+    return EmitBuiltinBitXorReduce(E);
+#endif 
+/****************** end HLS special builtin ******************/
   case Builtin::BI__builtin_ffs:
   case Builtin::BI__builtin_ffsl:
   case Builtin::BI__builtin_ffsll: {
@@ -5279,6 +5307,117 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
     auto *Ptr = llvm::ConstantExpr::getGetElementPtr(Str.getElementType(),
                                                      Str.getPointer(), Zeros);
     return RValue::get(Ptr);
+  }
+  case Builtin::BI__builtin_afpga_task_define: { 
+    Value *task_this = EmitScalarExpr(E->getArg(0));
+    Value *task_name = EmitScalarExpr(E->getArg(1));
+    Value *task_run_func = EmitScalarExpr(E->getArg(2));
+    Value *task_config = EmitScalarExpr(E->getArg(3));
+
+    Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_task_define,
+                                             {
+                                             Builder.getPtrTy(), 
+                                             Builder.getPtrTy(), 
+                                             Builder.getPtrTy(), 
+                                             Builder.getPtrTy()}, {task_this, task_name, task_run_func, task_config});
+
+    return RValue::get(intr); 
+
+  }
+  case Builtin::BI__builtin_afpga_task_pipe_read: { 
+    Value *task_this = EmitScalarExpr(E->getArg(0));
+
+    Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_task_pipe_read,
+                                             {Builder.getPtrTy()}, 
+                                             {task_this});
+
+    return RValue::get(intr); 
+  }
+  case Builtin::BI__builtin_afpga_task_pipe_write: { 
+    Value *task_this = EmitScalarExpr(E->getArg(0));
+
+    Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_task_pipe_write,
+                                             {Builder.getPtrTy()} , 
+                                             {task_this} ); 
+
+    return RValue::get(intr); 
+  }
+
+  case Builtin::BI__builtin_afpga_hostif_mem_write: { 
+    Value *interface_this = EmitScalarExpr(E->getArg(0));
+    Value *offset = EmitScalarExpr(E->getArg(1)); 
+    Value *data_ptr = EmitScalarExpr(E->getArg(2));
+
+    Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_hostif_mem_write,
+                                             {Builder.getPtrTy(), offset->getType(), data_ptr->getType()} , 
+                                             {interface_this, offset, data_ptr} ); 
+
+    return RValue::get(intr); 
+  }
+  case Builtin::BI__builtin_afpga_hostif_mem_read: { 
+    Value *interface_this = EmitScalarExpr(E->getArg(0));
+    Value *offset = EmitScalarExpr(E->getArg(1));
+
+    Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_hostif_mem_read,
+                                             {Builder.getPtrTy(), offset->getType()} , 
+                                             {interface_this, offset} ); 
+
+    return RValue::get(intr); 
+  }
+  case Builtin::BI__builtin_afpga_hwif_scalar_read: { 
+    Value *interface_this = EmitScalarExpr(E->getArg(0));
+
+    Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_hwif_scalar_read,
+                                             {Builder.getPtrTy()} , 
+                                             {interface_this} ); 
+    return RValue::get(intr); 
+    
+
+  }
+  case Builtin::BI__builtin_afpga_hwif_scalar_write: { 
+    Value *interface_this = EmitScalarExpr(E->getArg(0));
+    Value *data_ptr = EmitScalarExpr(E->getArg(0));
+
+    Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_hwif_scalar_write,
+                                             {Builder.getPtrTy(), data_ptr->getType()} , 
+                                             {interface_this, data_ptr} ); 
+    return RValue::get(intr); 
+
+  }
+  case Builtin::BI__builtin_afpga_hostif_scalar_read: { 
+    Value *interface_this = EmitScalarExpr(E->getArg(0));
+
+    Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_hostif_scalar_read,
+                                             {Builder.getPtrTy()}, 
+                                             {interface_this} ); 
+    return RValue::get(intr); 
+
+  }
+  case Builtin::BI__builtin_afpga_hostif_scalar_write: { 
+    Value *interface_this = EmitScalarExpr(E->getArg(0));
+    Value *data_ptr = EmitScalarExpr(E->getArg(0));
+
+    Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_hostif_scalar_write,
+                                             {Builder.getPtrTy(), data_ptr->getType()} , 
+                                             {interface_this, data_ptr} ); 
+    return RValue::get(intr); 
+  }
+  case Builtin::BI__builtin_afpga_fifo_read: { 
+    Value *fifo_this = EmitScalarExpr(E->getArg(0));
+
+    Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_fifo_read,
+                                             {Builder.getPtrTy()}, 
+                                             {fifo_this} ); 
+    return RValue::get(intr); 
+  }
+  case Builtin::BI__builtin_afpga_fifo_write: { 
+    Value *fifo_this = EmitScalarExpr(E->getArg(0));
+    Value *data_ptr = EmitScalarExpr(E->getArg(0));
+
+    Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_fifo_write,
+                                             {Builder.getPtrTy(), data_ptr->getType()} , 
+                                             {fifo_this, data_ptr} ); 
+    return RValue::get(intr); 
   }
   }
 
@@ -19802,3 +19941,709 @@ Value *CodeGenFunction::EmitLoongArchBuiltinExpr(unsigned BuiltinID,
   llvm::Function *F = CGM.getIntrinsic(ID);
   return Builder.CreateCall(F, Ops);
 }
+#if 0
+/// Legacy FPGA related builtins
+/// Convert the __builtin_bit_concat builtin.
+/// See IEEE 1666-2005, System C, Section 7.2.7, pg 176.
+RValue CodeGenFunction::EmitBuiltinBitConcat(const CallExpr *E) {
+  llvm::Value *RsltPtr = EmitScalarExpr(E->getArg(0));
+  llvm::Value *HighPtr = EmitScalarExpr(E->getArg(1));
+  llvm::Value *LowPtr = EmitScalarExpr(E->getArg(2));
+
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(RsltPtr))
+    RsltPtr = BC->getOperand(0);
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(HighPtr))
+    HighPtr = BC->getOperand(0);
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(LowPtr))
+    LowPtr = BC->getOperand(0);
+
+  llvm::IntegerType *RsltTy = 0, *HighTy = 0, *LowTy = 0;
+
+  if (llvm::PointerType *RsltPtrTy =
+          dyn_cast<llvm::PointerType>(RsltPtr->getType()))
+    RsltTy = dyn_cast<llvm::IntegerType>(RsltPtrTy->getPointerElementType());
+
+  if (llvm::PointerType *HighPtrTy =
+          dyn_cast<llvm::PointerType>(HighPtr->getType()))
+    HighTy = dyn_cast<llvm::IntegerType>(HighPtrTy->getPointerElementType());
+
+  if (llvm::PointerType *LowPtrTy =
+          dyn_cast<llvm::PointerType>(LowPtr->getType()))
+    LowTy = dyn_cast<llvm::IntegerType>(LowPtrTy->getPointerElementType());
+
+  if (!HighTy || !LowTy || !RsltTy) {
+    CGM.Error(E->getExprLoc(),
+              "All three arguments to __builtin_bit_concat must be int* typed");
+    return RValue::get(0);
+  }
+
+  if (RsltTy->getBitWidth() != HighTy->getBitWidth() + LowTy->getBitWidth()) {
+    CGM.Error(E->getArg(0)->getExprLoc(),
+              "Invalid bit width for __builtin_bit_concat result");
+    return RValue::get(0);
+  }
+
+  // Get the shift amount for the high bits
+  llvm::ConstantInt *Shift =
+      llvm::ConstantInt::get(RsltTy, LowTy->getBitWidth());
+
+  // Load the two values being concatenated
+  llvm::Value *High = ((CGBuilderBaseTy &)Builder).CreateLoad(HighPtr, "");
+  llvm::Value *Low = ((CGBuilderBaseTy &)Builder).CreateLoad(LowPtr, "");
+
+  // Extend both values to the concatenated bit width
+  llvm::Value *HighZExt = Builder.CreateZExt(High, RsltTy, "");
+  llvm::Value *LowZExt = Builder.CreateZExt(Low, RsltTy, "");
+
+  // Shift the high bits up
+  llvm::Value *New = Builder.CreateShl(HighZExt, Shift, "");
+
+  // Or in the low bits to form the result.
+  llvm::Value *Concat = Builder.CreateOr(New, LowZExt, "bit_concat");
+
+  ((CGBuilderBaseTy &)Builder).CreateStore(Concat, RsltPtr);
+
+  return RValue::get(RsltPtr);
+}
+
+/// given a string, this method returns the specific radix of the integer
+/// 0 represents oct, 0x hex 0b binary
+/// if the return value is less than 0, indicates the radix can not be
+/// processed
+static uint32_t getRadix(std::string &s) {
+  std::string prefix = "";
+  if (s[0] == '-' || s[0] == '+') {
+    prefix += s[0];
+    s = s.substr(1);
+  }
+  int len = s.length() - 1;
+  if (len == 1) {
+    if (s[0] <= '9' && s[0] >= '0') {
+      s = prefix + s;
+      return 10;
+    } else {
+      return 0; // indicate there is only one char and it is not dec
+    }
+  }
+
+  if (s[0] != '0') {
+    // no need to check valid char here
+    s = prefix + s;
+    return 10;
+  }
+
+  if (s[1] == 'x' || s[1] == 'X') {
+    if (len == 2) {
+      assert(0 && "There is nothing following the Radix");
+      return 0;
+    }
+    s = s.substr(2);
+    s = prefix + s;
+    return 16;
+  }
+
+  if (s[1] == 'b' || s[1] == 'B') {
+    if (len == 2) {
+      assert(0 && "There is nothing following the Radix");
+      return 0;
+    }
+    s = s.substr(2);
+    s = prefix + s;
+    return 2;
+  }
+
+  s = s.substr(1);
+  s = prefix + s;
+  return 8;
+}
+
+RValue CodeGenFunction::EmitBuiltinBitFromString(const CallExpr *E) {
+  llvm::Value *RsltPtr = EmitScalarExpr(E->getArg(0));
+  llvm::Value *Str = EmitScalarExpr(E->getArg(1));
+  llvm::Value *Radix = EmitScalarExpr(E->getArg(2));
+
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(RsltPtr))
+    RsltPtr = BC->getOperand(0);
+
+  llvm::IntegerType *RsltTy = 0;
+  if (llvm::PointerType *RsltPtrTy =
+          dyn_cast<llvm::PointerType>(RsltPtr->getType()))
+    RsltTy = dyn_cast<llvm::IntegerType>(RsltPtrTy->getPointerElementType());
+  if (!RsltTy) {
+    CGM.Error(E->getExprLoc(),
+              "First argument to __builtin_bit_from_string must be int* typed");
+    return RValue::get(0);
+  }
+
+  GlobalVariable *StrGV = 0;
+  if (GetElementPtrInst *StrPtr = dyn_cast<GetElementPtrInst>(Str))
+    StrGV = dyn_cast<GlobalVariable>(StrPtr->getOperand(0));
+  else if (ConstantExpr *StrCE = dyn_cast<ConstantExpr>(Str))
+    if (StrCE->getOpcode() == Instruction::GetElementPtr)
+      StrGV = dyn_cast<GlobalVariable>(StrCE->getOperand(0));
+  ConstantDataArray *CA = 0;
+  if (StrGV && StrGV->hasInitializer() && StrGV->isConstant())
+    CA = dyn_cast<ConstantDataArray>(StrGV->getInitializer());
+
+  if (!CA || !CA->isCString()) {
+    CGM.Error(E->getArg(1)->getExprLoc(),
+              "Second argument to __builtin_bit_from_string must be "
+              "a constant C string");
+    return RValue::get(0);
+  }
+
+  uint32_t bits = RsltTy->getBitWidth();
+
+  std::string str(CA->getAsString());
+
+  llvm::ConstantInt *RadixC = dyn_cast<llvm::ConstantInt>(Radix);
+  if (!RadixC || RadixC->isZero()) {
+    CGM.Error(E->getArg(2)->getExprLoc(),
+              "Third argument to __builtin_bit_from_string must be "
+              "a constant int");
+    return RValue::get(0);
+  }
+  uint32_t radix = RadixC->getLimitedValue();
+  if (radix != 2 && radix != 8 && radix != 10 && radix != 16) {
+    CGM.Error(E->getArg(2)->getExprLoc(),
+              "Third argument to __builtin_bit_from_string must be "
+              "2, 8, 10 or 16");
+    return RValue::get(0);
+  }
+
+  if (radix == 10)
+    radix = getRadix(str);
+  if (radix == 0) {
+    CGM.Error(E->getArg(1)->getExprLoc(),
+              "Can not process radix for second arguments of "
+              "__builtin_bit_from_string");
+    return RValue::get(0);
+  }
+
+  uint32_t strLen = str.length() - 1;
+  const char *strp = str.c_str();
+  StringRef strpref(strp, strLen);
+  uint32_t bitsNeeded = APInt::getBitsNeeded(strpref, radix);
+  APInt APIntVal(bitsNeeded, strpref, radix);
+
+  llvm::Value *ConstInt = 0;
+  if (bits < bitsNeeded) {
+    ConstInt =
+        llvm::ConstantInt::get(CGM.getLLVMContext(), APIntVal.trunc(bits));
+    CGM.getDiags().Report(
+        CGM.getContext().getFullLoc(E->getArg(0)->getExprLoc()),
+        diag::warn_builtin_bit_from_string_small_bitwidth)
+        << bitsNeeded << bits;
+  } else if (bits > bitsNeeded) {
+    const char *extension = "zero";
+    if (strp[0] == '-') {
+      ConstInt =
+          llvm::ConstantInt::get(CGM.getLLVMContext(), APIntVal.sext(bits));
+      extension = "sign";
+    } else
+      ConstInt =
+          llvm::ConstantInt::get(CGM.getLLVMContext(), APIntVal.zext(bits));
+    CGM.getDiags().Report(
+        CGM.getContext().getFullLoc(E->getArg(0)->getExprLoc()),
+        diag::warn_builtin_bit_from_string_large_bitwidth)
+        << bitsNeeded << extension << bits;
+  } else
+    ConstInt = llvm::ConstantInt::get(CGM.getLLVMContext(), APIntVal);
+
+  ((CGBuilderBaseTy &)Builder).CreateStore(ConstInt, RsltPtr);
+
+  return RValue::get(RsltPtr);
+}
+
+/// Convert the __builtin_bit_select pseudo-builtin. The result is an i1 value.
+/// See IEEE 1666-2005, System C, Section 7.2.5, pg 175.
+RValue CodeGenFunction::EmitBuiltinBitSelect(const CallExpr *E) {
+  // Get the Value and bit operands
+  Value *ValPtr = EmitScalarExpr(E->getArg(0));
+  Value *Bit = EmitScalarExpr(E->getArg(1));
+
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(ValPtr))
+    ValPtr = BC->getOperand(0);
+
+  llvm::IntegerType *ValTy = 0;
+  // Make sure they are pointers to integers.
+  if (llvm::PointerType *ValPtrTy =
+          dyn_cast<llvm::PointerType>(ValPtr->getType()))
+    ValTy = dyn_cast<llvm::IntegerType>(ValPtrTy->getPointerElementType());
+
+  if (!ValTy) {
+    CGM.Error(E->getArg(0)->getExprLoc(),
+              "First argument to __builtin_bit_select must be int* typed");
+    return RValue::get(0);
+  }
+
+  llvm::IntegerType *BitTy = dyn_cast<llvm::IntegerType>(Bit->getType());
+
+  if (!BitTy) {
+    CGM.Error(
+        E->getArg(1)->getExprLoc(),
+        "Second argument to __builtin_bit_select must be an integer type");
+    return RValue::get(0);
+  }
+
+  // Load the Val from which we select
+  Value *Val = ((CGBuilderBaseTy &)Builder).CreateLoad(ValPtr, "");
+
+  // If the Bit index argument isn't the same width as the Val, make it so.
+  if (ValTy != BitTy)
+    Bit = Builder.CreateIntCast(Bit, ValTy, false, "");
+
+  // Get a mask for the bit of interest
+  llvm::ConstantInt *One = llvm::ConstantInt::get(ValTy, 1);
+  Value *Mask = Builder.CreateShl(One, Bit, "");
+
+  // And the value with the mask
+  Value *And = Builder.CreateAnd(Val, Mask, "");
+
+  // Truncate down to an i1
+  llvm::ConstantInt *Zero = llvm::ConstantInt::get(ValTy, 0);
+  llvm::Value *Result = Builder.CreateICmpNE(And, Zero, "bit_select");
+
+  llvm::Type *DestTy = ConvertType(E->getType());
+  Result = Builder.CreateIntCast(Result, DestTy, false, "cast");
+
+  return RValue::get(Result);
+}
+
+/// Convert the __builtin_bit_set builtin.
+/// See IEEE 1666-2005, System C, Section 7.2.5, pg 175.
+RValue CodeGenFunction::EmitBuiltinBitSet(const CallExpr *E) {
+  // Get the Value and bit operands
+  Value *RsltPtr = EmitScalarExpr(E->getArg(0));
+  Value *ValPtr = EmitScalarExpr(E->getArg(1));
+  Value *ReplPtr = EmitScalarExpr(E->getArg(2));
+  Value *Bit = EmitScalarExpr(E->getArg(3));
+
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(RsltPtr))
+    RsltPtr = BC->getOperand(0);
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(ValPtr))
+    ValPtr = BC->getOperand(0);
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(ReplPtr))
+    ReplPtr = BC->getOperand(0);
+
+  llvm::IntegerType *RsltTy = 0, *ValTy = 0, *BitTy = 0, *ReplTy = 0;
+
+  // Make sure they are pointers to integers.
+  if (llvm::PointerType *RsltPtrTy =
+          dyn_cast<llvm::PointerType>(RsltPtr->getType()))
+    RsltTy = dyn_cast<llvm::IntegerType>(RsltPtrTy->getPointerElementType());
+  if (!RsltTy) {
+    CGM.Error(E->getArg(0)->getExprLoc(),
+              "First argument to __builtin_bit_set must be int* type.");
+    return RValue::get(0);
+  }
+
+  if (llvm::PointerType *ValPtrTy =
+          dyn_cast<llvm::PointerType>(ValPtr->getType()))
+    ValTy = dyn_cast<llvm::IntegerType>(ValPtrTy->getPointerElementType());
+  if (!ValTy) {
+    CGM.Error(E->getArg(1)->getExprLoc(),
+              "Second argument to __builtin_bit_set must be int* type.");
+    return RValue::get(0);
+  }
+
+  if (llvm::PointerType *ReplPtrTy =
+          dyn_cast<llvm::PointerType>(ReplPtr->getType()))
+    ReplTy = dyn_cast<llvm::IntegerType>(ReplPtrTy->getPointerElementType());
+  if (!ReplTy) {
+    CGM.Error(E->getArg(2)->getExprLoc(),
+              "Third argument to __builtin_bit_set must be int* type.");
+    return RValue::get(0);
+  }
+
+  BitTy = dyn_cast<llvm::IntegerType>(Bit->getType());
+  if (!BitTy) {
+    CGM.Error(E->getArg(3)->getExprLoc(),
+              "Fourth argument to __builtin_bit_set must be int type.");
+    return RValue::get(0);
+  }
+
+  // If the Bit index argument isn't the same width as the Val, make it so.
+  if (ValTy != BitTy)
+    Bit = Builder.CreateIntCast(Bit, ValTy, false, "");
+
+  // Load the value and and replacement bits
+  Value *Val = ((CGBuilderBaseTy &)Builder).CreateLoad(ValPtr, "");
+  Value *Repl = ((CGBuilderBaseTy &)Builder).CreateLoad(ReplPtr, "");
+
+  llvm::Constant *Zero = ConstantInt::getNullValue(ReplTy);
+  llvm::Value *ICmp = Builder.CreateICmpNE(Repl, Zero, "");
+
+  llvm::Constant *One = llvm::ConstantInt::get(ValTy, 1);
+  Value *BitClear = Builder.CreateShl(One, Bit, "");
+  BitClear = Builder.CreateNot(BitClear, "");
+  Value *Result = Builder.CreateAnd(Val, BitClear, "");
+
+  Value *ZExt = Builder.CreateZExt(ICmp, ValTy, "");
+  Value *BitSet = Builder.CreateShl(ZExt, Bit, "");
+
+  // Truncate down to an i1
+  Value *Select = Builder.CreateOr(Result, BitSet, "bit_set");
+
+  // Save the result.
+  ((CGBuilderBaseTy &)Builder).CreateStore(Select, RsltPtr);
+
+  return RValue::get(RsltPtr);
+}
+
+/// Convert the __builtin_bit_part_select pseudo-builtin.
+/// See IEEE 1666-2005, System C, Section 7.2.6, pg 175.
+/// NOTE: The implementation accept non-constant Lo and Hi now
+RValue CodeGenFunction::EmitBuiltinBitPartSelect(const CallExpr *E) {
+  // Get the operands to the function
+  Value *RsltPtr = EmitScalarExpr(E->getArg(0));
+  Value *ValPtr = EmitScalarExpr(E->getArg(1));
+  Value *Lo = EmitScalarExpr(E->getArg(2));
+  Value *Hi = EmitScalarExpr(E->getArg(3));
+
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(RsltPtr))
+    RsltPtr = BC->getOperand(0);
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(ValPtr))
+    ValPtr = BC->getOperand(0);
+
+  llvm::IntegerType *RsltTy = 0, *ValTy = 0, *LoTy = 0, *HiTy = 0;
+
+  // Make sure they are pointers to integers.
+  if (llvm::PointerType *RsltPtrTy =
+          dyn_cast<llvm::PointerType>(RsltPtr->getType()))
+    RsltTy = dyn_cast<llvm::IntegerType>(RsltPtrTy->getPointerElementType());
+  if (!RsltTy) {
+    CGM.Error(E->getArg(0)->getExprLoc(),
+              "First argument to __builtin_bit_part_select must be int* typed");
+    return RValue::get(0);
+  }
+
+  if (llvm::PointerType *ValPtrTy =
+          dyn_cast<llvm::PointerType>(ValPtr->getType()))
+    ValTy = dyn_cast<llvm::IntegerType>(ValPtrTy->getPointerElementType());
+  if (!ValTy) {
+    CGM.Error(
+        E->getArg(1)->getExprLoc(),
+        "Second argument to __builtin_bit_part_select must be int* typed");
+    return RValue::get(0);
+  }
+
+  LoTy = dyn_cast<llvm::IntegerType>(Lo->getType());
+  if (!LoTy) {
+    CGM.Error(E->getArg(2)->getExprLoc(),
+              "Third argument to __builtin_bit_part_select must be int typed");
+    return RValue::get(0);
+  }
+
+  HiTy = dyn_cast<llvm::IntegerType>(Hi->getType());
+  if (!HiTy) {
+    CGM.Error(E->getArg(3)->getExprLoc(),
+              "Fourth argument to __builtin_bit_part_select must be int typed");
+    return RValue::get(0);
+  }
+
+  LLVMContext &Context = CGM.getLLVMContext();
+  if (LoTy != llvm::Type::getInt32Ty(Context))
+    Lo = Builder.CreateIntCast(Lo, llvm::Type::getInt32Ty(Context), false, "");
+  if (HiTy != llvm::Type::getInt32Ty(Context))
+    Hi = Builder.CreateIntCast(Hi, llvm::Type::getInt32Ty(Context), false, "");
+
+  auto *PartSelectDecl = Intrinsic::getDeclaration(
+      &CGM.getModule(), Intrinsic::fpga_legacy_part_select, {ValTy});
+  Value *Args[3] = {((CGBuilderBaseTy &)Builder).CreateLoad(ValPtr, ""), Lo,
+                    Hi};
+  Value *PartSelect = Builder.CreateCall(PartSelectDecl, Args, "part_select");
+  ((CGBuilderBaseTy &)Builder).CreateStore(PartSelect, RsltPtr);
+
+  return RValue::get(RsltPtr);
+}
+
+/// Convert the __builtin_bit_part_set pseudo-builtin.
+RValue CodeGenFunction::EmitBuiltinBitPartSet(const CallExpr *E) {
+  // Get the operands to the function
+  Value *RsltPtr = EmitScalarExpr(E->getArg(0));
+  Value *ValPtr = EmitScalarExpr(E->getArg(1));
+  Value *RepPtr = EmitScalarExpr(E->getArg(2));
+  Value *Lo = EmitScalarExpr(E->getArg(3));
+  Value *Hi = EmitScalarExpr(E->getArg(4));
+
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(RsltPtr))
+    RsltPtr = BC->getOperand(0);
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(ValPtr))
+    ValPtr = BC->getOperand(0);
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(RepPtr))
+    RepPtr = BC->getOperand(0);
+
+  llvm::IntegerType *RsltTy = 0, *ValTy = 0, *LoTy = 0, *HiTy = 0, *RepTy = 0;
+
+  // Make sure they are pointers to integers.
+  if (llvm::PointerType *RsltPtrTy =
+          dyn_cast<llvm::PointerType>(RsltPtr->getType()))
+    RsltTy = dyn_cast<llvm::IntegerType>(RsltPtrTy->getPointerElementType());
+  if (!RsltTy) {
+    CGM.Error(E->getArg(0)->getExprLoc(),
+              "First argument to __builtin_bit_part_set must be int* typed");
+    return RValue::get(0);
+  }
+
+  if (llvm::PointerType *ValPtrTy =
+          dyn_cast<llvm::PointerType>(ValPtr->getType()))
+    ValTy = dyn_cast<llvm::IntegerType>(ValPtrTy->getPointerElementType());
+  if (!ValTy) {
+    CGM.Error(E->getArg(1)->getExprLoc(),
+              "Second argument to __builtin_bit_part_set must be int* typed");
+    return RValue::get(0);
+  }
+  if (llvm::PointerType *RepPtrTy =
+          dyn_cast<llvm::PointerType>(RepPtr->getType()))
+    RepTy = dyn_cast<llvm::IntegerType>(RepPtrTy->getPointerElementType());
+  if (!RepTy) {
+    CGM.Error(E->getArg(2)->getExprLoc(),
+              "Third argument to __builtin_bit_part_set must be int* typed");
+    return RValue::get(0);
+  }
+
+  LoTy = dyn_cast<llvm::IntegerType>(Lo->getType());
+  if (!LoTy) {
+    CGM.Error(E->getArg(3)->getExprLoc(),
+              "Fourth argument to __builtin_bit_part_set must be int typed");
+    return RValue::get(0);
+  }
+
+  HiTy = dyn_cast<llvm::IntegerType>(Hi->getType());
+  if (!HiTy) {
+    CGM.Error(E->getArg(4)->getExprLoc(),
+              "Fifth argument to __builtin_bit_part_set must be int typed");
+    return RValue::get(0);
+  }
+
+  LLVMContext &Context = CGM.getLLVMContext();
+  if (LoTy != llvm::Type::getInt32Ty(Context))
+    Lo = Builder.CreateIntCast(Lo, llvm::Type::getInt32Ty(Context), false, "");
+  if (HiTy != llvm::Type::getInt32Ty(Context))
+    Hi = Builder.CreateIntCast(Hi, llvm::Type::getInt32Ty(Context), false, "");
+
+  auto *PartSetDecl = Intrinsic::getDeclaration(
+      &CGM.getModule(), Intrinsic::fpga_legacy_part_set, {ValTy, RepTy});
+
+  Value *Args[4] = {((CGBuilderBaseTy &)Builder).CreateLoad(ValPtr, ""),
+                    ((CGBuilderBaseTy &)Builder).CreateLoad(RepPtr, ""), Lo,
+                    Hi};
+  Value *PartSet = Builder.CreateCall(PartSetDecl, Args, "part_set");
+  ((CGBuilderBaseTy &)Builder).CreateStore(PartSet, RsltPtr);
+
+  return RValue::get(RsltPtr);
+}
+
+/// Convert the __builtin_bit_and_reduce builtin. This builtin requires one
+/// integer operand (of arbitrary bit width). It sequentially ands the bits
+/// together and returns the resulting bit. This is equivalent to counting the
+/// zeros and returning 0 if any are found or 1 otherwise.
+/// See IEEE 1666-2005, System C, Section 7.2.8, pg 178.
+RValue CodeGenFunction::EmitBuiltinBitAndReduce(const CallExpr *E) {
+  // Get the operand to the function
+  Value *Operand = EmitScalarExpr(E->getArg(0));
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(Operand))
+    Operand = BC->getOperand(0);
+  llvm::IntegerType *OpTy = 0;
+  if (llvm::PointerType *OpPtr =
+          dyn_cast<llvm::PointerType>(Operand->getType()))
+    OpTy = dyn_cast<llvm::IntegerType>(OpPtr->getPointerElementType());
+
+  if (!OpTy) {
+    CGM.Error(E->getArg(0)->getExprLoc(),
+              "Argument to __builtin_bit_and_reduce must be of int* type");
+    return RValue::get(0);
+  }
+
+  Operand = ((CGBuilderBaseTy &)Builder).CreateLoad(Operand, "");
+  llvm::Constant *AllOnes = llvm::Constant::getAllOnesValue(OpTy);
+  Value *Result = Builder.CreateICmpEQ(Operand, AllOnes, "and_reduce");
+
+  llvm::Type *DestTy = ConvertType(E->getType());
+  Result = Builder.CreateIntCast(Result, DestTy, false, "cast");
+
+  return RValue::get(Result);
+}
+
+// Convert the __builtin_bit_nand_reduce builtin. This builtin requires one
+// integer operand (of arbitrary bit width). It sequentially ands the bits
+// together and returns the resulting bit. This is equivalent to counting the
+// zeros and returning 0 if any are found or 1 otherwise.
+// See IEEE 1666-2005, System C, Section 7.2.8, pg 178.
+RValue CodeGenFunction::EmitBuiltinBitNAndReduce(const CallExpr *E) {
+  // Get the operand to the function
+  Value *Operand = EmitScalarExpr(E->getArg(0));
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(Operand))
+    Operand = BC->getOperand(0);
+  llvm::IntegerType *OpTy = 0;
+  if (llvm::PointerType *OpPtr =
+          dyn_cast<llvm::PointerType>(Operand->getType()))
+    OpTy = dyn_cast<llvm::IntegerType>(OpPtr->getPointerElementType());
+  if (!OpTy) {
+    CGM.Error(E->getArg(0)->getExprLoc(),
+              "Argument to __builtin_bit_nand_reduce must be of int* type");
+    return RValue::get(0);
+  }
+
+  Operand = ((CGBuilderBaseTy &)Builder).CreateLoad(Operand, "");
+  llvm::Constant *AllOnes = llvm::Constant::getAllOnesValue(OpTy);
+  Value *Result = Builder.CreateICmpNE(Operand, AllOnes, "nand_reduce");
+
+  llvm::Type *DestTy = ConvertType(E->getType());
+  Result = Builder.CreateIntCast(Result, DestTy, false, "cast");
+
+  return RValue::get(Result);
+}
+
+// Convert the __builtin_bit_or_reduce builtin. This builtin requires one
+// integer operand (of arbitrary bit width). It sequentially ors the bits
+// together and returns the resulting bit. This is equivalent to returning
+// 0 if the operand is all zeros, 1 others.
+// value against 0 and returning 1 if it is not zero, 0 otherwise.
+// See IEEE 1666-2005, System C, Section 7.2.8, pg 178.
+RValue CodeGenFunction::EmitBuiltinBitOrReduce(const CallExpr *E) {
+  // Get the operand to the function
+  Value *Operand = EmitScalarExpr(E->getArg(0));
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(Operand))
+    Operand = BC->getOperand(0);
+  llvm::IntegerType *OpTy = 0;
+  if (llvm::PointerType *OpPtr =
+          dyn_cast<llvm::PointerType>(Operand->getType()))
+    OpTy = dyn_cast<llvm::IntegerType>(OpPtr->getPointerElementType());
+  if (!OpTy) {
+    CGM.Error(E->getArg(0)->getExprLoc(),
+              "Argument to __builtin_bit_or_reduce must be of int* type");
+    return RValue::get(0);
+  }
+
+  Operand = ((CGBuilderBaseTy &)Builder).CreateLoad(Operand, "");
+  llvm::Constant *Zero = llvm::ConstantInt::getNullValue(OpTy);
+  Value *Result = Builder.CreateICmpNE(Operand, Zero, "or_reduce");
+
+  llvm::Type *DestTy = ConvertType(E->getType());
+  Result = Builder.CreateIntCast(Result, DestTy, false, "cast");
+
+  return RValue::get(Result);
+}
+
+/// Convert the _builtint_bit_nor_reduce builtin. This builtin requires one
+/// integer operand (of arbitrary bit width). It sequentially nor's the bits
+/// together and returns the resulting bit of the last nor. This is equivalent
+/// to returning 1 if the operand is all 0s, 0 otherwise. It is also the inverse
+/// of the __builtin_bit_reduce_nor builtin.
+/// See IEEE 1666-2005, System C, Section 7.2.8, pg 178.
+RValue CodeGenFunction::EmitBuiltinBitNOrReduce(const CallExpr *E) {
+  // Get the operand to the function
+  Value *Operand = EmitScalarExpr(E->getArg(0));
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(Operand))
+    Operand = BC->getOperand(0);
+  llvm::IntegerType *OpTy = 0;
+  if (llvm::PointerType *OpPtr =
+          dyn_cast<llvm::PointerType>(Operand->getType()))
+    OpTy = dyn_cast<llvm::IntegerType>(OpPtr->getPointerElementType());
+  if (!OpTy) {
+    CGM.Error(E->getArg(0)->getExprLoc(),
+              "Argument to __builtin_bit_nor_reduce must be of int* type");
+    return RValue::get(0);
+  }
+
+  Operand = ((CGBuilderBaseTy &)Builder).CreateLoad(Operand, "");
+  llvm::Constant *Zero = llvm::ConstantInt::getNullValue(OpTy);
+  Value *Result = Builder.CreateICmpEQ(Operand, Zero, "nor_reduce");
+
+  llvm::Type *DestTy = ConvertType(E->getType());
+  Result = Builder.CreateIntCast(Result, DestTy, false, "cast");
+
+  return RValue::get(Result);
+}
+
+/// Convert the __builtin_bit_xor_reduce builtin. This builtin requires one
+/// integer operand (of arbitrary bit width). It sequentially xor's the bits
+/// together and returns the resulting bit of the last xor.
+/// See IEEE 1666-2005, System C, Section 7.2.8, pg 178.
+RValue CodeGenFunction::EmitBuiltinBitXorReduce(const CallExpr *E) {
+  // Get the operand to the function
+  Value *Operand = EmitScalarExpr(E->getArg(0));
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(Operand))
+    Operand = BC->getOperand(0);
+
+  llvm::IntegerType *OpTy = 0;
+  if (llvm::PointerType *OpPtr =
+          dyn_cast<llvm::PointerType>(Operand->getType()))
+    OpTy = dyn_cast<llvm::IntegerType>(OpPtr->getPointerElementType());
+  if (!OpTy) {
+    CGM.Error(E->getArg(0)->getExprLoc(),
+              "Argument to __builtin_bit_xor_reduce must be of integer type");
+    return RValue::get(0);
+  }
+
+  Operand = ((CGBuilderBaseTy &)Builder).CreateLoad(Operand, "");
+
+  uint32_t OpBits = OpTy->getBitWidth();
+  std::string IntrName("llvm.ctpop.i" + llvm::utostr(OpBits));
+
+  std::vector<llvm::Type *> args;
+  args.push_back(OpTy);
+
+  LLVMContext &Context = CGM.getLLVMContext();
+  llvm::FunctionType *FT = llvm::FunctionType::get(
+      llvm::IntegerType::get(Context, OpBits), args, false);
+
+  llvm::Function *F =
+      cast<llvm::Function>(CGM.CreateRuntimeFunction(FT, IntrName));
+
+  Value *Result = Builder.CreateCall(F, Operand, "");
+  Result =
+      Builder.CreateTrunc(Result, llvm::Type::getInt1Ty(Context), "xor_reduce");
+
+  llvm::Type *DestTy = ConvertType(E->getType());
+  Result = Builder.CreateIntCast(Result, DestTy, false, "cast");
+  return RValue::get(Result);
+}
+
+/// Convert the __builtin_bit_nxor_reduce builtin. This builtin requires one
+/// integer operand (of arbitrary bit width). It sequentially nxor's the bits
+/// together and returns the resulting bit of the last nxor.
+/// See IEEE 1666-2005, System C, Section 7.2.8, pg 178.
+RValue CodeGenFunction::EmitBuiltinBitNXorReduce(const CallExpr *E) {
+  // Get the operand to the function
+  Value *Operand = EmitScalarExpr(E->getArg(0));
+  if (BitCastInst *BC = dyn_cast<BitCastInst>(Operand))
+    Operand = BC->getOperand(0);
+
+  llvm::IntegerType *OpTy = 0;
+  if (llvm::PointerType *OpPtr =
+          dyn_cast<llvm::PointerType>(Operand->getType()))
+    OpTy = dyn_cast<llvm::IntegerType>(OpPtr->getPointerElementType());
+  if (!OpTy) {
+    CGM.Error(E->getArg(0)->getExprLoc(),
+              "Argument to __builtin_bit_nxor_reduce must be of integer type");
+    return RValue::get(0);
+  }
+
+  Operand = ((CGBuilderBaseTy &)Builder).CreateLoad(Operand, "");
+
+  uint32_t OpBits = OpTy->getBitWidth();
+  std::string IntrName("llvm.ctpop.i" + llvm::utostr(OpBits));
+
+  std::vector<llvm::Type *> args;
+  args.push_back(OpTy);
+
+  LLVMContext &Context = CGM.getLLVMContext();
+  llvm::FunctionType *FT = llvm::FunctionType::get(
+      llvm::IntegerType::get(Context, OpBits), args, false);
+
+  llvm::Function *F =
+      cast<llvm::Function>(CGM.CreateRuntimeFunction(FT, IntrName));
+
+  Value *Result = Builder.CreateCall(F, Operand, "");
+  Result = Builder.CreateTrunc(Result, llvm::Type::getInt1Ty(Context), "");
+  Result = Builder.CreateNot(Result, "nxor_reduce");
+
+  llvm::Type *DestTy = ConvertType(E->getType());
+  Result = Builder.CreateIntCast(Result, DestTy, false, "cast");
+  return RValue::get(Result);
+}
+#endif 
+

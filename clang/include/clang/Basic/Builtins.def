@@ -1721,6 +1721,55 @@ BUILTIN(__builtin_ms_va_copy, "vc*&c*&", "n")
 // Arithmetic Fence: to prevent FP reordering and reassociation optimizations
 LANGBUILTIN(__arithmetic_fence, "v.", "tE", ALL_LANGUAGES)
 
+LANGBUILTIN(__builtin_afpga_task_define , "v.", "T", ALL_LANGUAGES)
+LANGBUILTIN(__builtin_afpga_task_pipe_read , "v.", "T", ALL_LANGUAGES)
+LANGBUILTIN(__builtin_afpga_task_pipe_write, "v.", "T", ALL_LANGUAGES)
+
+LANGBUILTIN(__builtin_afpga_mutex_lock, "v.", "T", ALL_LANGUAGES)
+LANGBUILTIN(__builtin_afpga_mutex_unlock, "v.", "T", ALL_LANGUAGES)
+
+LANGBUILTIN(__builtin_afpga_async_task_define, "v.", "T", ALL_LANGUAGES)
+
+LANGBUILTIN(__builtin_afpga_interface_define, "v.", "T", ALL_LANGUAGES)
+
+LANGBUILTIN(__builtin_afpga_hostif_mem_read, "v*.", "T", ALL_LANGUAGES) 
+LANGBUILTIN(__builtin_afpga_hostif_mem_write, "v.", "T", ALL_LANGUAGES) 
+
+LANGBUILTIN(__builtin_afpga_hostif_scalar_write, "v.", "T", ALL_LANGUAGES) 
+LANGBUILTIN(__builtin_afpga_hostif_scalar_read, "v*.", "T", ALL_LANGUAGES) 
+
+LANGBUILTIN(__builtin_afpga_hwif_scalar_write, "v.", "T", ALL_LANGUAGES) 
+LANGBUILTIN(__builtin_afpga_hwif_scalar_read, "v*.", "T", ALL_LANGUAGES) 
+
+LANGBUILTIN(__builtin_afpga_fifo_write, "v.", "T", ALL_LANGUAGES) 
+LANGBUILTIN(__builtin_afpga_fifo_read, "v*.", "T", ALL_LANGUAGES) 
+
+// HLS Extensions - Legacy builtins
+LANGBUILTIN(__builtin_bit_concat, "vvC*vC*vC*", "n", CXX_LANG)
+LANGBUILTIN(__builtin_bit_from_string, "vvC*cC*i", "n", CXX_LANG)
+LANGBUILTIN(__builtin_bit_select, "ivC*i", "nc", CXX_LANG)
+LANGBUILTIN(__builtin_bit_set, "vvC*vC*vC*i", "n", CXX_LANG)
+LANGBUILTIN(__builtin_bit_part_select, "vvC*vC*ii", "n", CXX_LANG)
+LANGBUILTIN(__builtin_bit_part_set, "vvC*vC*vC*ii", "n", CXX_LANG)
+LANGBUILTIN(__builtin_bit_and_reduce, "ivC*", "nc", CXX_LANG)
+LANGBUILTIN(__builtin_bit_or_reduce, "ivC*", "nc", CXX_LANG)
+LANGBUILTIN(__builtin_bit_nxor_reduce, "ivC*", "nc", CXX_LANG)
+LANGBUILTIN(__builtin_bit_nand_reduce, "ivC*", "nc", CXX_LANG)
+LANGBUILTIN(__builtin_bit_nor_reduce, "ivC*", "nc", CXX_LANG)
+LANGBUILTIN(__builtin_bit_xor_reduce, "ivC*", "nc", CXX_LANG)
+
+// HLS Extensions - sqrt for half
+LANGBUILTIN(__builtin_sqrth, "hh", "Fne", CXX_LANG)
+LANGBUILTIN(__builtin_logh, "hh", "Fne", CXX_LANG)
+LANGBUILTIN(__builtin_exph, "hh", "Fne", CXX_LANG)
+LANGBUILTIN(__builtin_reciph, "hh", "nc", CXX_LANG)
+LANGBUILTIN(__builtin_rsqrth, "hh", "nc", CXX_LANG)
+LANGBUILTIN(__builtin_recipf, "ff", "nc", CXX_LANG)
+LANGBUILTIN(__builtin_recip, "dd", "nc", CXX_LANG)
+LANGBUILTIN(__builtin_rsqrtf, "ff", "nc", CXX_LANG)
+LANGBUILTIN(__builtin_rsqrt, "dd", "nc", CXX_LANG)
+
+
 #undef BUILTIN
 #undef LIBBUILTIN
 #undef LANGBUILTIN

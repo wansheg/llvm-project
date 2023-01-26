@@ -4198,6 +4198,20 @@ public:
   /// pointer operand.
   llvm::Type *SVEBuiltinMemEltTy(const SVETypeFlags &TypeFlags);
 
+  RValue EmitBuiltinBitConcat(const CallExpr *E);
+  RValue EmitBuiltinBitFromString(const CallExpr *E);
+  RValue EmitBuiltinBitSelect(const CallExpr *E);
+  RValue EmitBuiltinBitSet(const CallExpr *E);
+  RValue EmitBuiltinBitPartSelect(const CallExpr *E);
+  RValue EmitBuiltinBitPartSet(const CallExpr *E);
+  RValue EmitBuiltinBitAndReduce(const CallExpr *E);
+  RValue EmitBuiltinBitNAndReduce(const CallExpr *E);
+  RValue EmitBuiltinBitOrReduce(const CallExpr *E);
+  RValue EmitBuiltinBitNOrReduce(const CallExpr *E);
+  RValue EmitBuiltinBitXorReduce(const CallExpr *E);
+  RValue EmitBuiltinBitNXorReduce(const CallExpr *E);
+
+
   SmallVector<llvm::Type *, 2>
   getSVEOverloadTypes(const SVETypeFlags &TypeFlags, llvm::Type *ReturnType,
                       ArrayRef<llvm::Value *> Ops);
