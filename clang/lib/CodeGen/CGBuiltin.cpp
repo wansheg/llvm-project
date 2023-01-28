@@ -5310,16 +5310,12 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
   }
   case Builtin::BI__builtin_afpga_task_define: { 
     Value *task_this = EmitScalarExpr(E->getArg(0));
-    Value *task_name = EmitScalarExpr(E->getArg(1));
-    Value *task_run_func = EmitScalarExpr(E->getArg(2));
+    Value *task_run_func = EmitScalarExpr(E->getArg(1));
+    Value *task_name = EmitScalarExpr(E->getArg(2));
     Value *task_config = EmitScalarExpr(E->getArg(3));
 
     Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_task_define,
-                                             {
-                                             Builder.getPtrTy(), 
-                                             Builder.getPtrTy(), 
-                                             Builder.getPtrTy(), 
-                                             Builder.getPtrTy()}, {task_this, task_name, task_run_func, task_config});
+                                             { task_run_func->getType() }, {task_this, task_run_func, task_name, task_config});
 
     return RValue::get(intr); 
 
@@ -5328,7 +5324,7 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
     Value *task_this = EmitScalarExpr(E->getArg(0));
 
     Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_task_pipe_read,
-                                             {Builder.getPtrTy()}, 
+                                             {}, 
                                              {task_this});
 
     return RValue::get(intr); 
@@ -5337,7 +5333,7 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
     Value *task_this = EmitScalarExpr(E->getArg(0));
 
     Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_task_pipe_write,
-                                             {Builder.getPtrTy()} , 
+                                             {} , 
                                              {task_this} ); 
 
     return RValue::get(intr); 
@@ -5348,7 +5344,7 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
     Value *interface_kind = EmitScalarExpr(E->getArg(1));
 
     Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_interface_define,
-                                             {Builder.getPtrTy(), interface_kind->getType()} , 
+                                             {interface_kind->getType()} , 
                                              {interface_this, interface_kind} ); 
 
     return RValue::get(intr); 
@@ -5371,7 +5367,7 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
     Value *data_ptr = EmitScalarExpr(E->getArg(2));
 
     Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_hostif_mem_write,
-                                             {Builder.getPtrTy(), offset->getType(), data_ptr->getType()} , 
+                                             {data_ptr->getType()} , 
                                              {interface_this, offset, data_ptr} ); 
 
     return RValue::get(intr); 
@@ -5401,7 +5397,7 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
     Value *data_ptr = EmitScalarExpr(E->getArg(0));
 
     Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_hwif_scalar_write,
-                                             {Builder.getPtrTy(), data_ptr->getType()} , 
+                                             {data_ptr->getType()} , 
                                              {interface_this, data_ptr} ); 
     return RValue::get(intr); 
 
@@ -5420,7 +5416,7 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
     Value *data_ptr = EmitScalarExpr(E->getArg(0));
 
     Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_hostif_scalar_write,
-                                             {Builder.getPtrTy(), data_ptr->getType()} , 
+                                             {data_ptr->getType()} , 
                                              {interface_this, data_ptr} ); 
     return RValue::get(intr); 
   }
@@ -5437,8 +5433,8 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
     Value *data_ptr = EmitScalarExpr(E->getArg(0));
 
     Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_fifo_write,
-                                             {Builder.getPtrTy(), data_ptr->getType()} , 
-                                             {fifo_this, data_ptr} ); 
+                                             {data_ptr->getType()} , 
+                                             {fifo_this, data_ptr}); 
     return RValue::get(intr); 
   }
   }

@@ -2169,7 +2169,7 @@ def int_ptrauth_sign_generic :
   DefaultAttrsIntrinsic<[llvm_i64_ty], [llvm_i64_ty, llvm_i64_ty], [IntrNoMem]>;
 
 def int_afpga_task_define : ClangBuiltin<"__builtin_afpga_task_define">,
-    Intrinsic<[], [llvm_ptr_ty, llvm_ptr_ty, llvm_ptr_ty, llvm_ptr_ty], [IntrInaccessibleMemOnly]>;
+    Intrinsic<[], [llvm_ptr_ty, llvm_any_ty, llvm_ptr_ty, llvm_ptr_ty], [IntrInaccessibleMemOnly]>;
 
 def int_afpga_task_pipe_read : ClangBuiltin<"__builtin_afpga_task_pipe_read">,
     Intrinsic<[llvm_ptr_ty], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>;
