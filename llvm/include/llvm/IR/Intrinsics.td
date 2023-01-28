@@ -2186,8 +2186,8 @@ def int_afpga_mutex_unlock: ClangBuiltin<"__builtin_afpga_mutex_unlock">,
 def int_afpga_async_task_define: ClangBuiltin<"__builtin_afpga_async_task_define">, 
     Intrinsic<[], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>; 
 
-def int_afpga_async_interface_define: ClangBuiltin<"__builtin_afpga_interface_define">, 
-    Intrinsic<[], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>; 
+def int_afpga_interface_define: ClangBuiltin<"__builtin_afpga_interface_define">, 
+    Intrinsic<[], [llvm_ptr_ty, llvm_any_ty], [IntrInaccessibleMemOnly]>; 
 
 def int_afpga_hostif_mem_read: ClangBuiltin<"__builtin_afpga_hostif_mem_read">, 
     Intrinsic<[llvm_any_ty], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>; 

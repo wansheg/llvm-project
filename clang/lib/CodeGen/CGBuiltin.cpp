@@ -5343,6 +5343,28 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
     return RValue::get(intr); 
   }
 
+  case Builtin::BI__builtin_afpga_interface_define: { 
+    Value *interface_this = EmitScalarExpr(E->getArg(0));
+    Value *interface_kind = EmitScalarExpr(E->getArg(1));
+
+    Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_interface_define,
+                                             {Builder.getPtrTy(), interface_kind->getType()} , 
+                                             {interface_this, interface_kind} ); 
+
+    return RValue::get(intr); 
+  }
+
+
+  case Builtin::BI__builtin_afpga_async_task_define: { 
+    Value *async_this = EmitScalarExpr(E->getArg(0));
+
+    Value *intr = Builder.CreateIntrinsic(Intrinsic::afpga_async_task_define,
+                                             {Builder.getPtrTy()} , 
+                                             {async_this} ); 
+
+    return RValue::get(intr); 
+  }
+
   case Builtin::BI__builtin_afpga_hostif_mem_write: { 
     Value *interface_this = EmitScalarExpr(E->getArg(0));
     Value *offset = EmitScalarExpr(E->getArg(1)); 
