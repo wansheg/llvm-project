@@ -2412,8 +2412,7 @@ static SDValue lowerBUILD_VECTOR(SDValue Op, SelectionDAG &DAG,
     // according to the size of the final vector - use i8 chunks rather than
     // XLenVT if we're producing a v8i1. This results in more consistent
     // codegen across RV32 and RV64.
-    unsigned NumViaIntegerBits =
-        std::min(std::max(NumElts, 8u), Subtarget.getXLen());
+    unsigned NumViaIntegerBits = std::clamp(NumElts, 8u, Subtarget.getXLen());
     NumViaIntegerBits = std::min(NumViaIntegerBits, Subtarget.getELEN());
     if (ISD::isBuildVectorOfConstantSDNodes(Op.getNode())) {
       // If we have to use more than one INSERT_VECTOR_ELT then this
@@ -12746,7 +12745,6 @@ bool RISCVTargetLowering::isEligibleForTailCallOptimization(
     CCState &CCInfo, CallLoweringInfo &CLI, MachineFunction &MF,
     const SmallVector<CCValAssign, 16> &ArgLocs) const {
 
-  auto &Callee = CLI.Callee;
   auto CalleeCC = CLI.CallConv;
   auto &Outs = CLI.Outs;
   auto &Caller = MF.getFunction();
@@ -12782,16 +12780,6 @@ bool RISCVTargetLowering::isEligibleForTailCallOptimization(
   auto IsCalleeStructRet = Outs.empty() ? false : Outs[0].Flags.isSRet();
   if (IsCallerStructRet || IsCalleeStructRet)
     return false;
-
-  // Externally-defined functions with weak linkage should not be
-  // tail-called. The behaviour of branch instructions in this situation (as
-  // used for tail calls) is implementation-defined, so we cannot rely on the
-  // linker replacing the tail call with a return.
-  if (GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Callee)) {
-    const GlobalValue *GV = G->getGlobal();
-    if (GV->hasExternalWeakLinkage())
-      return false;
-  }
 
   // The callee has to preserve all registers the caller needs to preserve.
   const RISCVRegisterInfo *TRI = Subtarget.getRegisterInfo();
@@ -13264,6 +13252,11 @@ bool RISCVTargetLowering::isUsedByReturnOnly(SDNode *N, SDValue &Chain) const {
     return false;
 
   SDNode *Copy = *N->use_begin();
+  
+  if (Copy->getOpcode() == ISD::BITCAST) {
+    return isUsedByReturnOnly(Copy, Chain);
+  }
+  
   // TODO: Handle additional opcodes in order to support tail-calling libcalls
   // with soft float ABIs.
   if (Copy->getOpcode() != ISD::CopyToReg) {

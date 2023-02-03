@@ -791,6 +791,8 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
                        ISD::ATOMIC_LOAD_UMIN,
                        ISD::ATOMIC_LOAD_UMAX,
                        ISD::ATOMIC_LOAD_FADD,
+                       ISD::ATOMIC_LOAD_UINC_WRAP,
+                       ISD::ATOMIC_LOAD_UDEC_WRAP,
                        ISD::INTRINSIC_VOID,
                        ISD::INTRINSIC_W_CHAIN});
 
@@ -2082,7 +2084,8 @@ void SITargetLowering::allocateSpecialInputSGPRs(
   if (Info.hasDispatchPtr())
     allocateSGPR64Input(CCInfo, ArgInfo.DispatchPtr);
 
-  if (Info.hasQueuePtr() && AMDGPU::getAmdhsaCodeObjectVersion() < 5)
+  const Module *M = MF.getFunction().getParent();
+  if (Info.hasQueuePtr() && AMDGPU::getCodeObjectVersion(*M) < 5)
     allocateSGPR64Input(CCInfo, ArgInfo.QueuePtr);
 
   // Implicit arg ptr takes the place of the kernarg segment pointer. This is a
@@ -2132,7 +2135,8 @@ void SITargetLowering::allocateHSAUserSGPRs(CCState &CCInfo,
     CCInfo.AllocateReg(DispatchPtrReg);
   }
 
-  if (Info.hasQueuePtr() && AMDGPU::getAmdhsaCodeObjectVersion() < 5) {
+  const Module *M = MF.getFunction().getParent();
+  if (Info.hasQueuePtr() && AMDGPU::getCodeObjectVersion(*M) < 5) {
     Register QueuePtrReg = Info.addQueuePtr(TRI);
     MF.addLiveIn(QueuePtrReg, &AMDGPU::SGPR_64RegClass);
     CCInfo.AllocateReg(QueuePtrReg);
@@ -2451,7 +2455,7 @@ SDValue SITargetLowering::LowerFormalArguments(
       unsigned PsInputBits = Info->getPSInputAddr() & Info->getPSInputEnable();
       if ((PsInputBits & 0x7F) == 0 ||
           ((PsInputBits & 0xF) == 0 && (PsInputBits >> 11 & 1)))
-        Info->markPSInputEnabled(countTrailingZeros(Info->getPSInputAddr()));
+        Info->markPSInputEnabled(llvm::countr_zero(Info->getPSInputAddr()));
     }
   } else if (IsKernel) {
     assert(Info->hasWorkGroupIDX() && Info->hasWorkItemIDX());
@@ -5431,19 +5435,13 @@ SDValue SITargetLowering::lowerTRAP(SDValue Op, SelectionDAG &DAG) const {
       Subtarget->getTrapHandlerAbi() != GCNSubtarget::TrapHandlerAbi::AMDHSA)
     return lowerTrapEndpgm(Op, DAG);
 
-  if (std::optional<uint8_t> HsaAbiVer = AMDGPU::getHsaAbiVersion(Subtarget)) {
-    switch (*HsaAbiVer) {
-    case ELF::ELFABIVERSION_AMDGPU_HSA_V2:
-    case ELF::ELFABIVERSION_AMDGPU_HSA_V3:
-      return lowerTrapHsaQueuePtr(Op, DAG);
-    case ELF::ELFABIVERSION_AMDGPU_HSA_V4:
-    case ELF::ELFABIVERSION_AMDGPU_HSA_V5:
-      return Subtarget->supportsGetDoorbellID() ?
-          lowerTrapHsa(Op, DAG) : lowerTrapHsaQueuePtr(Op, DAG);
-    }
-  }
+  const Module *M = DAG.getMachineFunction().getFunction().getParent();
+  unsigned CodeObjectVersion = AMDGPU::getCodeObjectVersion(*M);
+  if (CodeObjectVersion <= 3)
+    return lowerTrapHsaQueuePtr(Op, DAG);
 
-  llvm_unreachable("Unknown trap handler");
+  return Subtarget->supportsGetDoorbellID() ? lowerTrapHsa(Op, DAG) :
+         lowerTrapHsaQueuePtr(Op, DAG);
 }
 
 SDValue SITargetLowering::lowerTrapEndpgm(
@@ -5471,7 +5469,8 @@ SDValue SITargetLowering::lowerTrapHsaQueuePtr(
 
   SDValue QueuePtr;
   // For code object version 5, QueuePtr is passed through implicit kernarg.
-  if (AMDGPU::getAmdhsaCodeObjectVersion() == 5) {
+  const Module *M = DAG.getMachineFunction().getFunction().getParent();
+  if (AMDGPU::getCodeObjectVersion(*M) >= 5) {
     QueuePtr =
         loadImplicitKernelArgument(DAG, MVT::i64, SL, Align(8), QUEUE_PTR);
   } else {
@@ -5574,7 +5573,8 @@ SDValue SITargetLowering::getSegmentAperture(unsigned AS, const SDLoc &DL,
 
   // For code object version 5, private_base and shared_base are passed through
   // implicit kernargs.
-  if (AMDGPU::getAmdhsaCodeObjectVersion() == 5) {
+  const Module *M = DAG.getMachineFunction().getFunction().getParent();
+  if (AMDGPU::getCodeObjectVersion(*M) >= 5) {
     ImplicitParameter Param =
         (AS == AMDGPUAS::LOCAL_ADDRESS) ? SHARED_BASE : PRIVATE_BASE;
     return loadImplicitKernelArgument(DAG, MVT::i32, DL, Align(4), Param);
@@ -7317,6 +7317,8 @@ SDValue SITargetLowering::LowerINTRINSIC_W_CHAIN(SDValue Op,
                                    M->getVTList(), Ops, M->getMemoryVT(),
                                    M->getMemOperand());
   }
+  case Intrinsic::amdgcn_atomic_inc:
+  case Intrinsic::amdgcn_atomic_dec:
   case Intrinsic::amdgcn_ds_fadd: {
     MemSDNode *M = cast<MemSDNode>(Op);
     unsigned Opc;
@@ -7324,24 +7326,28 @@ SDValue SITargetLowering::LowerINTRINSIC_W_CHAIN(SDValue Op,
     case Intrinsic::amdgcn_ds_fadd:
       Opc = ISD::ATOMIC_LOAD_FADD;
       break;
+    case Intrinsic::amdgcn_atomic_inc:
+      Opc = ISD::ATOMIC_LOAD_UINC_WRAP;
+      break;
+    case Intrinsic::amdgcn_atomic_dec:
+      Opc = ISD::ATOMIC_LOAD_UDEC_WRAP;
+      break;
     }
 
     return DAG.getAtomic(Opc, SDLoc(Op), M->getMemoryVT(),
                          M->getOperand(0), M->getOperand(2), M->getOperand(3),
                          M->getMemOperand());
   }
-  case Intrinsic::amdgcn_atomic_inc:
-  case Intrinsic::amdgcn_atomic_dec:
   case Intrinsic::amdgcn_ds_fmin:
   case Intrinsic::amdgcn_ds_fmax: {
     MemSDNode *M = cast<MemSDNode>(Op);
     unsigned Opc;
     switch (IntrID) {
     case Intrinsic::amdgcn_atomic_inc:
-      Opc = AMDGPUISD::ATOMIC_INC;
+      Opc = ISD::ATOMIC_LOAD_UINC_WRAP;
       break;
     case Intrinsic::amdgcn_atomic_dec:
-      Opc = AMDGPUISD::ATOMIC_DEC;
+      Opc = ISD::ATOMIC_LOAD_UDEC_WRAP;
       break;
     case Intrinsic::amdgcn_ds_fmin:
       Opc = AMDGPUISD::ATOMIC_LOAD_FMIN;
@@ -11778,7 +11784,7 @@ SDNode *SITargetLowering::adjustWritemask(MachineSDNode *&Node,
       // Set which texture component corresponds to the lane.
       unsigned Comp;
       for (unsigned i = 0, Dmask = OldDmask; (i <= Lane) && (Dmask != 0); i++) {
-        Comp = countTrailingZeros(Dmask);
+        Comp = llvm::countr_zero(Dmask);
         Dmask &= ~(1 << Comp);
       }
 
@@ -12605,7 +12611,7 @@ static void knownBitsForWorkitemID(const GCNSubtarget &ST, GISelKnownBits &KB,
                                    KnownBits &Known, unsigned Dim) {
   unsigned MaxValue =
       ST.getMaxWorkitemID(KB.getMachineFunction().getFunction(), Dim);
-  Known.Zero.setHighBits(countLeadingZeros(MaxValue));
+  Known.Zero.setHighBits(llvm::countl_zero(MaxValue));
 }
 
 void SITargetLowering::computeKnownBitsForTargetInstr(
@@ -12636,7 +12642,7 @@ void SITargetLowering::computeKnownBitsForTargetInstr(
       // based on the actual size because we don't know if it's accurate or not
       // at any given point.
       Known.Zero.setHighBits(
-          countLeadingZeros(getSubtarget()->getAddressableLocalMemorySize()));
+          llvm::countl_zero(getSubtarget()->getAddressableLocalMemorySize()));
       break;
     }
     }
@@ -12794,8 +12800,6 @@ bool SITargetLowering::isSDNodeSourceOfDivergence(
     return AMDGPU::isIntrinsicSourceOfDivergence(
         cast<ConstantSDNode>(N->getOperand(1))->getZExtValue());
   case AMDGPUISD::ATOMIC_CMP_SWAP:
-  case AMDGPUISD::ATOMIC_INC:
-  case AMDGPUISD::ATOMIC_DEC:
   case AMDGPUISD::ATOMIC_LOAD_FMIN:
   case AMDGPUISD::ATOMIC_LOAD_FMAX:
   case AMDGPUISD::BUFFER_ATOMIC_SWAP:
